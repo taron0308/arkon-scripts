@@ -479,7 +479,128 @@
   }
 })();
 
-window.addEventListener("load",()=>{if(!window.gsap)return;document.querySelectorAll(".w-slider").forEach(slider=>{let active=-1;function visibleIndex(){let mask=slider.querySelector(".w-slider-mask"),slides=[...slider.querySelectorAll(".w-slide")];if(!mask)return 0;let m=mask.getBoundingClientRect(),center=m.left+m.width/2,best=0,dist=1e9;slides.forEach((s,i)=>{let r=s.getBoundingClientRect(),c=r.left+r.width/2,d=Math.abs(c-center);if(d<dist){dist=d;best=i}});return best}function run(){let i=visibleIndex();if(i===active)return;active=i;[...slider.querySelectorAll(".w-slide")].forEach((s,n)=>{let img=s.querySelector(".slider-zoom-image");if(!img)return;gsap.killTweensOf(img);gsap.set(img,{scale:1,transformOrigin:"center center"});if(n===i)gsap.to(img,{scale:1.12,duration:7,ease:"none"})})}setInterval(run,150);setTimeout(run,500);slider.addEventListener("click",()=>setTimeout(run,300))})});
+// ARKON SLIDER: slow image zoom + custom autoplay without hover pause.
+// IMPORTANT: Turn OFF Webflow native "Auto-play slides" to avoid double autoplay.
+(function () {
+  const SLIDE_DELAY = 3000;
+  const ZOOM_SCALE = 1.12;
+  const ZOOM_DURATION = 7;
+  const CHECK_INTERVAL = 150;
+  const CHANGE_SETTLE_DELAY = 350;
 
-// Note: custom next.click autoplay was removed from this file.
-// Use Webflow's native Slider autoplay instead to avoid double/autoplay conflicts.
+  function initArkonSliders() {
+    if (!window.gsap) return;
+
+    document.querySelectorAll('.w-slider').forEach(function (slider) {
+      if (slider.dataset.arkonSliderReady === 'true') return;
+      slider.dataset.arkonSliderReady = 'true';
+
+      const nextArrow = slider.querySelector('.w-slider-arrow-right');
+      const slides = Array.from(slider.querySelectorAll('.w-slide'));
+      const mask = slider.querySelector('.w-slider-mask');
+
+      if (!nextArrow || !slides.length || !mask) return;
+
+      let activeIndex = -1;
+      let autoplayTimer = null;
+      let isChanging = false;
+
+      function getVisibleIndex() {
+        const maskRect = mask.getBoundingClientRect();
+        const maskCenter = maskRect.left + maskRect.width / 2;
+        let bestIndex = 0;
+        let bestDistance = Infinity;
+
+        slides.forEach(function (slide, index) {
+          const rect = slide.getBoundingClientRect();
+          const slideCenter = rect.left + rect.width / 2;
+          const distance = Math.abs(slideCenter - maskCenter);
+
+          if (distance < bestDistance) {
+            bestDistance = distance;
+            bestIndex = index;
+          }
+        });
+
+        return bestIndex;
+      }
+
+      function resetImage(image) {
+        gsap.killTweensOf(image);
+        gsap.set(image, {
+          scale: 1,
+          transformOrigin: 'center center'
+        });
+      }
+
+      function playZoomForVisibleSlide(force) {
+        const visibleIndex = getVisibleIndex();
+
+        if (!force && visibleIndex === activeIndex) return;
+        activeIndex = visibleIndex;
+
+        slides.forEach(function (slide, index) {
+          const image = slide.querySelector('.slider-zoom-image');
+          if (!image) return;
+
+          resetImage(image);
+
+          if (index === visibleIndex) {
+            gsap.to(image, {
+              scale: ZOOM_SCALE,
+              duration: ZOOM_DURATION,
+              ease: 'none'
+            });
+          }
+        });
+      }
+
+      function restartAutoplay() {
+        clearTimeout(autoplayTimer);
+        autoplayTimer = setTimeout(goNext, SLIDE_DELAY);
+      }
+
+      function goNext() {
+        if (document.hidden || isChanging) {
+          restartAutoplay();
+          return;
+        }
+
+        isChanging = true;
+        nextArrow.click();
+
+        setTimeout(function () {
+          isChanging = false;
+          playZoomForVisibleSlide(true);
+          restartAutoplay();
+        }, CHANGE_SETTLE_DELAY);
+      }
+
+      // Detect manual navigation and restart the timer without hover pause.
+      slider.addEventListener('click', function () {
+        setTimeout(function () {
+          playZoomForVisibleSlide(true);
+          restartAutoplay();
+        }, CHANGE_SETTLE_DELAY);
+      });
+
+      // Keep zoom synced even if Webflow changes slide position internally.
+      setInterval(function () {
+        playZoomForVisibleSlide(false);
+      }, CHECK_INTERVAL);
+
+      setTimeout(function () {
+        playZoomForVisibleSlide(true);
+        restartAutoplay();
+      }, 500);
+    });
+  }
+
+  window.arkonInitSliders = initArkonSliders;
+
+  if (document.readyState === 'complete') {
+    initArkonSliders();
+  } else {
+    window.addEventListener('load', initArkonSliders);
+  }
+})();
