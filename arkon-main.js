@@ -623,3 +623,51 @@
 
   window.addEventListener("load", initArkonSlider);
 })();
+// ARKON CUSTOM SLIDER BUTTONS
+(function () {
+  function initCustomSliderButtons() {
+    document.querySelectorAll(".w-slider").forEach(function (slider) {
+      if (slider.dataset.customButtonsReady === "true") return;
+      slider.dataset.customButtonsReady = "true";
+
+      const nativePrev = slider.querySelector(".w-slider-arrow-left");
+      const nativeNext = slider.querySelector(".w-slider-arrow-right");
+
+      const customPrev = slider.querySelector('[data-slider-prev="true"]');
+      const customNext = slider.querySelector('[data-slider-next="true"]');
+
+      if (customPrev && nativePrev) {
+        customPrev.addEventListener("click", function (event) {
+          event.preventDefault();
+          nativePrev.click();
+        });
+      }
+
+      if (customNext && nativeNext) {
+        customNext.addEventListener("click", function (event) {
+          event.preventDefault();
+          nativeNext.click();
+        });
+      }
+    });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initCustomSliderButtons);
+  } else {
+    initCustomSliderButtons();
+  }
+
+  window.addEventListener("load", initCustomSliderButtons);
+})();
+(function () {
+  const style = document.createElement("style");
+  style.textContent = `
+    .w-slider-arrow-left,
+    .w-slider-arrow-right {
+      opacity: 0;
+      pointer-events: none;
+    }
+  `;
+  document.head.appendChild(style);
+})();
