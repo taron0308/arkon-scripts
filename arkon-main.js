@@ -3,6 +3,8 @@
 // lottie-web, GSAP, ScrollTrigger, SplitType.
 // Requires arkon-translations.js loaded before this file.
 
+
+
 // Inject styles that were previously in Webflow Footer <style> tags.
 (function () {
   const css = "/* SplitType responsive fix:\n   words stay whole, so translated Armenian/Russian headings wrap by words, not letters */\n.split-word,\n.word {\n  display: inline-block;\n  white-space: nowrap;\n}\n\n.split-char,\n.char {\n  display: inline-block;\n}\n\n#my-text-1,\n#my-text-2,\n#my-text-3,\n#my-text-4,\n[data-split-text=\"true\"] {\n  word-break: normal;\n  overflow-wrap: normal;\n  hyphens: none;\n}\n\n.is-active-language {\n  opacity: 0.5;\n  pointer-events: none;\n}\n\n.slider-image-wrap{overflow:hidden}\n.slider-zoom-image{width:100%;height:100%;object-fit:cover;transform:scale(1);will-change:transform}";
