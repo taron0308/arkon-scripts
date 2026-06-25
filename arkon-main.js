@@ -485,29 +485,40 @@
   const SLIDE_DELAY = 3000;
   const ZOOM_SCALE = 1.12;
   const ZOOM_DURATION = 7;
-  const CHECK_INTERVAL = 150;
   const CHANGE_SETTLE_DELAY = 350;
 
-  function initArkonSliders() {
-    if (!window.gsap) return;
+  window.__arkonSliderAutoplay = "loaded";
 
-    document.querySelectorAll('.w-slider').forEach(function (slider) {
-      if (slider.dataset.arkonSliderReady === 'true') return;
-      slider.dataset.arkonSliderReady = 'true';
+  function initArkonSlider() {
+    if (!window.gsap) {
+      setTimeout(initArkonSlider, 200);
+      return;
+    }
 
-      const nextArrow = slider.querySelector('.w-slider-arrow-right');
-      const slides = Array.from(slider.querySelectorAll('.w-slide'));
-      const mask = slider.querySelector('.w-slider-mask');
-
-      if (!nextArrow || !slides.length || !mask) return;
+    document.querySelectorAll(".w-slider").forEach(function (slider) {
+      if (slider.dataset.arkonSliderReady === "true") return;
+      slider.dataset.arkonSliderReady = "true";
 
       let activeIndex = -1;
-      let autoplayTimer = null;
-      let isChanging = false;
+      let timer = null;
+
+      function getSlides() {
+        return Array.from(slider.querySelectorAll(".w-slide"));
+      }
+
+      function getDots() {
+        return Array.from(slider.querySelectorAll(".w-slider-dot"));
+      }
 
       function getVisibleIndex() {
+        const mask = slider.querySelector(".w-slider-mask");
+        const slides = getSlides();
+
+        if (!mask || !slides.length) return 0;
+
         const maskRect = mask.getBoundingClientRect();
         const maskCenter = maskRect.left + maskRect.width / 2;
+
         let bestIndex = 0;
         let bestDistance = Infinity;
 
@@ -525,82 +536,88 @@
         return bestIndex;
       }
 
-      function resetImage(image) {
-        gsap.killTweensOf(image);
-        gsap.set(image, {
-          scale: 1,
-          transformOrigin: 'center center'
-        });
-      }
+      function runZoom(force) {
+        const slides = getSlides();
+        const index = getVisibleIndex();
 
-      function playZoomForVisibleSlide(force) {
-        const visibleIndex = getVisibleIndex();
+        if (!force && index === activeIndex) return;
+        activeIndex = index;
 
-        if (!force && visibleIndex === activeIndex) return;
-        activeIndex = visibleIndex;
-
-        slides.forEach(function (slide, index) {
-          const image = slide.querySelector('.slider-zoom-image');
+        slides.forEach(function (slide, slideIndex) {
+          const image = slide.querySelector(".slider-zoom-image");
           if (!image) return;
 
-          resetImage(image);
+          gsap.killTweensOf(image);
+          gsap.set(image, {
+            scale: 1,
+            transformOrigin: "center center"
+          });
 
-          if (index === visibleIndex) {
+          if (slideIndex === index) {
             gsap.to(image, {
               scale: ZOOM_SCALE,
               duration: ZOOM_DURATION,
-              ease: 'none'
+              ease: "none"
             });
           }
         });
       }
 
-      function restartAutoplay() {
-        clearTimeout(autoplayTimer);
-        autoplayTimer = setTimeout(goNext, SLIDE_DELAY);
-      }
-
       function goNext() {
-        if (document.hidden || isChanging) {
-          restartAutoplay();
+        if (document.hidden) {
+          restartTimer();
           return;
         }
 
-        isChanging = true;
-        nextArrow.click();
+        const dots = getDots();
+
+        if (dots.length > 1) {
+          let currentDotIndex = dots.findIndex(function (dot) {
+            return dot.classList.contains("w-active");
+          });
+
+          if (currentDotIndex < 0) {
+            currentDotIndex = getVisibleIndex();
+          }
+
+          const nextDot = dots[(currentDotIndex + 1) % dots.length];
+          if (nextDot) nextDot.click();
+        } else {
+          const nextArrow = slider.querySelector(".w-slider-arrow-right");
+          if (nextArrow) nextArrow.click();
+        }
 
         setTimeout(function () {
-          isChanging = false;
-          playZoomForVisibleSlide(true);
-          restartAutoplay();
+          runZoom(true);
         }, CHANGE_SETTLE_DELAY);
+
+        restartTimer();
       }
 
-      // Detect manual navigation and restart the timer without hover pause.
-      slider.addEventListener('click', function () {
+      function restartTimer() {
+        clearTimeout(timer);
+        timer = setTimeout(goNext, SLIDE_DELAY);
+      }
+
+      slider.addEventListener("click", function () {
         setTimeout(function () {
-          playZoomForVisibleSlide(true);
-          restartAutoplay();
-        }, CHANGE_SETTLE_DELAY);
+          runZoom(true);
+          restartTimer();
+        }, 500);
       });
 
-      // Keep zoom synced even if Webflow changes slide position internally.
-      setInterval(function () {
-        playZoomForVisibleSlide(false);
-      }, CHECK_INTERVAL);
-
       setTimeout(function () {
-        playZoomForVisibleSlide(true);
-        restartAutoplay();
-      }, 500);
+        runZoom(true);
+        restartTimer();
+      }, 800);
     });
   }
 
-  window.arkonInitSliders = initArkonSliders;
-
-  if (document.readyState === 'complete') {
-    initArkonSliders();
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initArkonSlider);
   } else {
-    window.addEventListener('load', initArkonSliders);
+    initArkonSlider();
   }
+
+  window.addEventListener("load", initArkonSlider);
 })();
